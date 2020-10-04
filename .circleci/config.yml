@@ -1,32 +1,46 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
-version: 2.1
+# Java Maven CircleCI 2.0 configuration file
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+version: 2
 jobs:
   build:
     docker:
-      - image: 'circleci/openjdk:latest'
-      - image: circleci/mysql:8.0.4
-        auth:
-        environment:
-          MYSQL_ROOT_PASSWORD: bradleyboy128!
-          MYSQL_DATABASE: jdbc:mysql://localhost:3306/stocks
-          MYSQL_USER: monty
-          MYSQL_PASSWORD: some_pass
-
-    steps:
-      - checkout # check out the code
-      - run:
-      # Our primary container isn't MYSQL so run a sleep command until it's ready.
-          name: Waiting for MySQL to be ready
-          command: |
-            for i in `seq 1 10`;
-            do
-              nc -z 127.0.0.1 3306 && echo Success && exit 0
-              echo -n .
-              sleep 1
-            done
-            echo Failed waiting for MySQL && exit 1
-      - run:
-          name: Install MySQL CLI; Import dummy data; run an example query
-          command: |
-            sudo apt-get install default-mysql-client
-      - run: mvn test
+    # specify the version you desire here
+    - image: circleci/openjdk:11.0.3-jdk-stretch
+      #specify system properties
+      environment:
+        DB_ROOT_USER: monty
+        DB_URL: jdbc:mysql://localhost:3306/stocks
+        DB_DRIVER: com.mysql.jdbc.Driver
+        DB_PASS: some_pass
+  # Customize the JVM maximum heap limit
+      MAVEN_OPTS: -Xmx3200m
+      # Specify our database service here
+      # CircleCI maintains a library of pre-built images
+    - image: circleci/mysql:5.7
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: no
+        MYSQL_ROOT_PASSWORD: some_pass
+    working_directory: ~/repo
+      steps:
+    - checkout
+    - run:
+        name: Wait for Database Connection
+        # preinstalled in circleci/* docker image
+        command: dockerize -wait tcp://localhost:3306 -timeout 1m
+  #install mysql client
+    - run: sudo apt-get install mysql-client
+  # create databases
+    - run: mysql -h 127.0.0.1 -u root -e "create database stocks"
+    # Download and cache dependencies
+    - restore_cache:
+        keys:
+        -  v1-dependencies-{{ checksum "pom.xml" }}
+        # fallback to using the latest cache if no exact match is found
+        -  v1-dependencies-
+    - run: mvn dependency:go-offline
+    - save_cache:
+        paths:
+        - ~/.m2
+        key: v1-dependencies-{{ checksum "pom.xml" }}
+        # run tests!
+    - run: mvn integration-test
