@@ -29,4 +29,4 @@ jobs:
           name: Install MySQL CLI; Import dummy data; run an example query
           command: |
             sudo apt-get install default-mysql-client
-        
+      - run: mvn test
