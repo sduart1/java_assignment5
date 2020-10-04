@@ -16,7 +16,7 @@ jobs:
       MAVEN_OPTS: -Xmx3200m
       # Specify our database service here
       # CircleCI maintains a library of pre-built images
-    - image: circleci/mysql:5.7
+    - image: circleci/mysql:latest
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: no
         MYSQL_ROOT_PASSWORD: some_pass
